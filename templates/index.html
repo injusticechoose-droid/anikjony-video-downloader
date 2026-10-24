@@ -156,11 +156,12 @@ async function fetchVideo() {
     btn.disabled = true;
     input.disabled = true;
     $('btnText').innerHTML = '<span class="spinner"></span> SEARCHING...';
-    $('status').innerHTML = '<span style="color:#555">Fetching video details. Please wait...</span>';
+    $('status').innerHTML = '<span style="color:#555">Waking up server & fetching details... (Please wait up to 60s)</span>';
     $('result').innerHTML = '';
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    // টাইমআউট ২৫ সেকেন্ড থেকে বাড়িয়ে ৯০ সেকেন্ড (৯০,০০০ মি.লি.সে.) করা হলো
+    const timeoutId = setTimeout(() => controller.abort(), 90000); 
 
     try {
         const res = await fetch('/api/fetch', {
@@ -179,7 +180,7 @@ async function fetchVideo() {
         $('status').innerHTML = '';
         renderResult(data);
     } catch (e) {
-        if (e.name === 'AbortError') showError('Request timed out! Please try again.');
+        if (e.name === 'AbortError') showError('Request timed out! Server took too long to wake up. Please try again.');
         else showError('Network error. Please try again.');
     } finally {
         btn.disabled = false;
