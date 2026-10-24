@@ -11,21 +11,28 @@ from database import init_db, add_user, check_user
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "anikjony-super-secret-key-2024")
 COOKIE_SOURCE = "/etc/secrets/cookies.txt"
-COOKIE_FILE = "/tmp/cookies.txt" # রিড-রাইট পাথ
+COOKIE_FILE = "/tmp/cookies.txt" # রিড-রাইট পাথ (এরর সমাধানের জন্য)
 init_db()
 
-# কুকি ফাইলটি /tmp-তে কপি করার ফাংশন
+# YouTube ব্লক এড়ানোর জন্য নতুন ক্লায়েন্ট
+YT_EXTRACTOR_ARGS = {
+    'youtube': {
+        'player_client': ['tv', 'ios', 'mweb', 'android'],
+        'skip': ['hls', 'dash']
+    }
+}
+
 def prepare_cookie_file():
+    # Render এর সিক্রেট ফাইল থেকে /tmp তে কপি করা
     if os.path.exists(COOKIE_SOURCE):
         try:
             shutil.copy(COOKIE_SOURCE, COOKIE_FILE)
-            os.chmod(COOKIE_FILE, 0o600) # রিড-রাইট পারমিশন
+            os.chmod(COOKIE_FILE, 0o600)
             return True
         except Exception as e:
             print(f"Cookie copy error: {e}")
             return False
     elif os.path.exists("cookies.txt"):
-        # লোকাল ডেভেলপমেন্টের জন্য
         return True
     return False
 
@@ -93,17 +100,15 @@ def fetch():
     url = data.get('url', '').strip()
     if not url: return jsonify({'error': 'Please provide a valid URL'}), 400
 
-    # কুকি ফাইল প্রস্তুত করুন
     prepare_cookie_file()
 
     opts = {
         'quiet': True, 'no_warnings': True, 'nocheckcertificate': True, 
         'skip_download': True, 'socket_timeout': 20,
-        'extractor_args': {'youtube': {'player_client': ['android_vr', 'mweb', 'web_creator']}},
+        'extractor_args': YT_EXTRACTOR_ARGS,
         'geo_bypass': True
     }
     
-    # /tmp/cookies.txt ব্যবহার করুন
     if os.path.exists(COOKIE_FILE):
         opts['cookiefile'] = COOKIE_FILE
     elif os.path.exists("cookies.txt"):
@@ -115,7 +120,7 @@ def fetch():
     except Exception as e:
         err_str = str(e)
         if 'Failed to extract' in err_str or 'Sign in' in err_str:
-            return jsonify({'error': 'YouTube blocked this server IP. Please try again later or use a different video.'}), 500
+            return jsonify({'error': 'YouTube blocked this request. Try again later.'}), 500
         return jsonify({'error': f'Failed: {err_str[:100]}'}), 500
 
     formats, seen = [], set()
@@ -196,11 +201,10 @@ def download_worker(task_id, url, quality, title):
             'concurrent_fragment_downloads': 16,
             'progress_hooks': [progress_hook],
             'format_sort': ['ext:mp4:m4a', 'vcodec:h264', 'acodec:aac'],
-            'extractor_args': {'youtube': {'player_client': ['android_vr', 'mweb', 'web_creator']}},
+            'extractor_args': YT_EXTRACTOR_ARGS,
             'geo_bypass': True
         }
         
-        # /tmp/cookies.txt ব্যবহার করুন
         if os.path.exists(COOKIE_FILE): 
             ydl_opts['cookiefile'] = COOKIE_FILE
         elif os.path.exists("cookies.txt"):
