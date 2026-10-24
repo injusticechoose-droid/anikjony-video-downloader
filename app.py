@@ -3,26 +3,35 @@ import yt_dlp
 import time
 import threading
 import uuid
+import shutil
 from flask import Flask, request, jsonify, session, redirect, render_template, url_for, send_file
 from functools import wraps
 from database import init_db, add_user, check_user
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "anikjony-super-secret-key-2024")
-COOKIE_FILE = "/etc/secrets/cookies.txt" if os.path.exists("/etc/secrets/cookies.txt") else "cookies.txt"
+COOKIE_SOURCE = "/etc/secrets/cookies.txt"
+COOKIE_FILE = "/tmp/cookies.txt" # রিড-রাইট পাথ
 init_db()
+
+# কুকি ফাইলটি /tmp-তে কপি করার ফাংশন
+def prepare_cookie_file():
+    if os.path.exists(COOKIE_SOURCE):
+        try:
+            shutil.copy(COOKIE_SOURCE, COOKIE_FILE)
+            os.chmod(COOKIE_FILE, 0o600) # রিড-রাইট পারমিশন
+            return True
+        except Exception as e:
+            print(f"Cookie copy error: {e}")
+            return False
+    elif os.path.exists("cookies.txt"):
+        # লোকাল ডেভেলপমেন্টের জন্য
+        return True
+    return False
 
 DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 download_tasks = {}
-
-# YouTube বাইপাসের নতুন ক্লায়েন্ট (android_vr কাজ করার সম্ভাবনা সবচেয়ে বেশি)
-YT_EXTRACTOR_ARGS = {
-    'youtube': {
-        'player_client': ['android_vr', 'mweb', 'web_creator'],
-        'skip': ['hls', 'dash']
-    }
-}
 
 def cleanup_old_files():
     now = time.time()
@@ -84,21 +93,27 @@ def fetch():
     url = data.get('url', '').strip()
     if not url: return jsonify({'error': 'Please provide a valid URL'}), 400
 
+    # কুকি ফাইল প্রস্তুত করুন
+    prepare_cookie_file()
+
     opts = {
         'quiet': True, 'no_warnings': True, 'nocheckcertificate': True, 
         'skip_download': True, 'socket_timeout': 20,
-        'extractor_args': YT_EXTRACTOR_ARGS,
+        'extractor_args': {'youtube': {'player_client': ['android_vr', 'mweb', 'web_creator']}},
         'geo_bypass': True
     }
-    if os.path.exists(COOKIE_FILE): 
+    
+    # /tmp/cookies.txt ব্যবহার করুন
+    if os.path.exists(COOKIE_FILE):
         opts['cookiefile'] = COOKIE_FILE
+    elif os.path.exists("cookies.txt"):
+        opts['cookiefile'] = "cookies.txt"
 
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
     except Exception as e:
         err_str = str(e)
-        # এরর মেসেজ ক্লিন করা
         if 'Failed to extract' in err_str or 'Sign in' in err_str:
             return jsonify({'error': 'YouTube blocked this server IP. Please try again later or use a different video.'}), 500
         return jsonify({'error': f'Failed: {err_str[:100]}'}), 500
@@ -181,10 +196,15 @@ def download_worker(task_id, url, quality, title):
             'concurrent_fragment_downloads': 16,
             'progress_hooks': [progress_hook],
             'format_sort': ['ext:mp4:m4a', 'vcodec:h264', 'acodec:aac'],
-            'extractor_args': YT_EXTRACTOR_ARGS,
+            'extractor_args': {'youtube': {'player_client': ['android_vr', 'mweb', 'web_creator']}},
             'geo_bypass': True
         }
-        if os.path.exists(COOKIE_FILE): ydl_opts['cookiefile'] = COOKIE_FILE
+        
+        # /tmp/cookies.txt ব্যবহার করুন
+        if os.path.exists(COOKIE_FILE): 
+            ydl_opts['cookiefile'] = COOKIE_FILE
+        elif os.path.exists("cookies.txt"):
+            ydl_opts['cookiefile'] = "cookies.txt"
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
