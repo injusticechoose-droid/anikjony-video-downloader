@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AnikJony Downloader</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root { --bg: #ffffff; --surface: #f8f9fa; --text: #111111; --accent: #FFD700; --accent-hover: #FFC300; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Fredoka', sans-serif; }
+body { background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; background-image: radial-gradient(#000 1.5px, transparent 1.5px); background-size: 25px 25px; }
+.container { max-width: 700px; margin: 0 auto; }
+.header { display: flex; justify-content: space-between; align-items: center; padding: 15px 0 25px; }
+.header h1 { font-size: 32px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; text-shadow: 3px 3px 0px var(--accent); }
+.user-info { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 15px; }
+.user-info a { color: var(--text); text-decoration: none; border: 3px solid var(--text); padding: 6px 14px; border-radius: 10px; transition: 0.2s; box-shadow: 3px 3px 0px var(--text); background: #fff;}
+.user-info a:hover { background: var(--accent); transform: translate(-2px, -2px); box-shadow: 5px 5px 0px var(--text); }
+
+.search-card { background: var(--surface); padding: 25px; border-radius: 20px; border: 4px solid var(--text); box-shadow: 10px 10px 0px var(--text); margin-bottom: 30px; animation: popIn 0.5s ease-out; }
+.input-group { display: flex; gap: 12px; flex-direction: column; }
+input { width: 100%; padding: 16px; background: #fff; border: 3px solid var(--text); border-radius: 12px; font-size: 16px; font-weight: 600; color: var(--text); transition: 0.2s; }
+input:focus { outline: none; box-shadow: 4px 4px 0px var(--accent); transform: translate(-2px, -2px); }
+input:disabled { background: #eee; color: #888; cursor: not-allowed; }
+button#searchBtn { width: 100%; padding: 16px; background: var(--accent); color: var(--text); border: 3px solid var(--text); border-radius: 12px; font-weight: 700; font-size: 16px; cursor: pointer; transition: 0.2s; box-shadow: 5px 5px 0px var(--text); text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 10px; }
+button#searchBtn:hover:not(:disabled) { transform: translate(-3px, -3px); box-shadow: 8px 8px 0px var(--text); background: var(--accent-hover); }
+button#searchBtn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--text); }
+button#searchBtn:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; border-color: #999; color: #666; transform: none; }
+
+.tags { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; justify-content: center; }
+.tag { background: #fff; color: var(--text); font-size: 14px; font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 2px solid var(--text); box-shadow: 2px 2px 0px var(--text); }
+#status { margin-top: 15px; font-size: 15px; font-weight: 600; text-align: center; }
+.err { color: #d32f2f; background: #ffebee; padding: 12px; border-radius: 10px; border: 3px solid #d32f2f; box-shadow: 3px 3px 0px #d32f2f; }
+
+.result-card { background: var(--surface); padding: 25px; border-radius: 20px; border: 4px solid var(--text); box-shadow: 10px 10px 0px var(--text); animation: slideUp 0.5s ease-out; }
+.video-header { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; flex-direction: column; text-align: center; }
+@media(min-width: 500px) { .video-header { flex-direction: row; text-align: left; } }
+.thumbnail { width: 100%; max-width: 200px; border-radius: 12px; border: 3px solid var(--text); box-shadow: 3px 3px 0px var(--text); }
+.meta h3 { font-size: 17px; font-weight: 700; line-height: 1.3; margin-bottom: 5px; }
+.meta p { font-size: 14px; color: #555; font-weight: 600; }
+
+.format-list { display: flex; flex-direction: column; gap: 15px; }
+.format-item { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 14px 18px; border-radius: 12px; border: 3px solid var(--text); transition: 0.2s; box-shadow: 4px 4px 0px var(--text); flex-direction: column; gap: 15px; }
+@media(min-width: 500px) { .format-item { flex-direction: row; gap: 0; } }
+.format-info { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.format-info small { color: #666; font-weight: 600; }
+.badge { font-size: 12px; padding: 4px 8px; border-radius: 6px; font-weight: 700; border: 2px solid var(--text); }
+.badge-hd { background: var(--accent); color: var(--text); }
+.badge-sd { background: var(--surface); color: var(--text); }
+
+.dl-btn { background: var(--accent); color: var(--text); padding: 12px 20px; border-radius: 10px; border: 3px solid var(--text); font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s; width: 100%; justify-content: center; box-shadow: 3px 3px 0px var(--text); }
+@media(min-width: 500px) { .dl-btn { width: 170px; padding: 10px 20px; } }
+.dl-btn:hover:not(:disabled) { background: var(--accent-hover); transform: scale(1.05); }
+.dl-btn:disabled { background: #ccc; cursor: wait; box-shadow: none; border-color: #999; color: #666; }
+
+.spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(0,0,0,0.1); border-top-color: var(--text); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+.overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); display: none; align-items: center; justify-content: center; z-index: 1000; }
+.overlay.active { display: flex; animation: fadeIn 0.3s ease; }
+.loader-box { background: #fff; padding: 30px; border-radius: 24px; border: 4px solid var(--text); box-shadow: 12px 12px 0px var(--accent); text-align: center; width: 90%; max-width: 450px; }
+.loader-box h2 { font-size: 22px; margin-bottom: 5px; font-weight: 700; text-transform: uppercase; }
+.loader-box p { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 20px; }
+
+.cartoon-load { position: relative; width: 80px; height: 70px; margin: 0 auto 15px auto; }
+.cartoon-head { width: 50px; height: 50px; background: var(--accent); border: 3px solid var(--text); border-radius: 50%; position: absolute; left: 15px; top: 0; animation: jump 0.6s infinite alternate cubic-bezier(0.3, 0, 0.7, 1); display: flex; align-items: center; justify-content: center; }
+.cartoon-eye { width: 8px; height: 8px; background: var(--text); border-radius: 50%; position: absolute; top: 16px; }
+.eye-l { left: 10px; } .eye-r { right: 10px; }
+.cartoon-mouth { width: 16px; height: 8px; background: var(--text); border-radius: 0 0 10px 10px; position: absolute; bottom: 10px; left: 14px; }
+.cartoon-shadow { width: 40px; height: 8px; background: rgba(0,0,0,0.15); border-radius: 50%; position: absolute; bottom: 0; left: 20px; animation: shadow 0.6s infinite alternate cubic-bezier(0.3, 0, 0.7, 1); }
+
+.progress-wrapper { background: #f0f0f0; padding: 5px; border-radius: 15px; border: 3px solid var(--text); margin-bottom: 10px; }
+.progress-container { width: 100%; height: 20px; background: #fff; border-radius: 10px; overflow: hidden; position: relative; }
+.progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #FFA500); transition: width 0.4s ease; border-radius: 8px; position: relative; }
+.progress-bar::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent); animation: shimmer 1.5s infinite; }
+
+.progress-text { font-size: 15px; font-weight: 700; color: var(--text); display: flex; justify-content: space-between; margin-bottom: 5px; }
+.status-details { font-size: 12px; color: #666; font-weight: 600; display: flex; justify-content: space-between; }
+
+@keyframes jump { from { transform: translateY(8px) scaleY(0.9); } to { transform: translateY(-12px) scaleY(1); } }
+@keyframes shadow { from { transform: scale(1); opacity: 0.8; } to { transform: scale(0.6); opacity: 0.3; } }
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes slideUp { 0% { transform: translateY(30px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="overlay" id="dlOverlay">
+    <div class="loader-box">
+        <div class="cartoon-load">
+            <div class="cartoon-head">
+                <div class="cartoon-eye eye-l"></div>
+                <div class="cartoon-eye eye-r"></div>
+                <div class="cartoon-mouth"></div>
+            </div>
+            <div class="cartoon-shadow"></div>
+        </div>
+        <h2 id="loadTitle">PREPARING...</h2>
+        <p id="loadSub">Fetching video data...</p>
+        
+        <div class="progress-wrapper">
+            <div class="progress-text">
+                <span id="statusText">Connecting...</span>
+                <span id="percentText">0%</span>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="status-details">
+                <span id="speedText">0 MB/s</span>
+                <span id="etaText">--</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="header">
+        <h1>AnikJony</h1>
+        <div class="user-info">
+            {{ user }} <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </div>
+
+    <div class="search-card">
+        <div class="input-group">
+            <input id="urlInput" placeholder="Paste your video link here..." autocomplete="off">
+            <button id="searchBtn" onclick="fetchVideo()">
+                <span id="btnText">SEARCH</span>
+            </button>
+        </div>
+        <div class="tags">
+            <span class="tag">⚡ Ultra Fast</span>
+            <span class="tag">4K & 1080p</span>
+            <span class="tag">Auto Audio</span>
+        </div>
+        <div id="status"></div>
+    </div>
+
+    <div id="result"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let pollingInterval = null;
+let pollCount = 0;
+
+async function fetchVideo() {
+    const url = $('urlInput').value.trim();
+    if (!url) { showError('Please paste a valid link!'); return; }
+    
+    const btn = $('searchBtn');
+    const input = $('urlInput');
+    
+    btn.disabled = true;
+    input.disabled = true;
+    $('btnText').innerHTML = '<span class="spinner"></span> SEARCHING...';
+    $('status').innerHTML = '<span style="color:#555">Fetching video details. Please wait...</span>';
+    $('result').innerHTML = '';
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+    try {
+        const res = await fetch('/api/fetch', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url}),
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        const data = await res.json();
+        
+        if (!res.ok || data.error) { 
+            showError(data.error || 'Failed to fetch video.'); 
+            return; 
+        }
+        $('status').innerHTML = '';
+        renderResult(data);
+    } catch (e) {
+        if (e.name === 'AbortError') showError('Request timed out! Please try again.');
+        else showError('Network error. Please try again.');
+    } finally {
+        btn.disabled = false;
+        input.disabled = false;
+        $('btnText').textContent = 'SEARCH';
+    }
+}
+
+function renderResult(data) {
+    let html = `<div class="result-card">
+        <div class="video-header">
+            ${data.thumb ? `<img class="thumbnail" src="${escapeHTML(data.thumb)}">` : ''}
+            <div class="meta">
+                <h3>${escapeHTML(data.title)}</h3>
+                ${data.duration ? `<p>⏱ ${formatDuration(data.duration)}</p>` : ''}
+                <p style="color:#000; background:var(--accent); display:inline-block; padding:2px 8px; border-radius:5px; border:2px solid #000; margin-top:5px; font-size:12px;">✅ Sound Merged</p>
+            </div>
+        </div>
+        <div class="format-list">`;
+
+    data.formats.forEach((f, index) => {
+        const size = f.size ? ` • ${(f.size / 1048576).toFixed(1)} MB` : '';
+        const isHD = parseInt(f.quality) >= 720 || f.quality.includes('1080') || f.quality.includes('2160');
+        const badge = isHD ? '<span class="badge badge-hd">HD</span>' : '<span class="badge badge-sd">SD</span>';
+        
+        const btnAttr = `data-url="${escapeHTML(data.original_url)}" data-quality="${f.quality}" data-title="${escapeHTML(data.title)}"`;
+        
+        html += `<div class="format-item">
+            <div class="format-info">${escapeHTML(f.quality)}${badge}<small>.${f.ext}${size}</small></div>
+            <button class="dl-btn" onclick="startDownload(this)" ${btnAttr}>
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                DOWNLOAD
+            </button>
+        </div>`;
+    });
+
+    html += `</div></div>`;
+    $('result').innerHTML = html;
+}
+
+async function startDownload(btn) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.setAttribute('data-original-html', btn.innerHTML);
+    btn.innerHTML = '<span class="spinner"></span> WAIT';
+
+    const url = btn.getAttribute('data-url');
+    const quality = btn.getAttribute('data-quality');
+    const title = btn.getAttribute('data-title');
+
+    $('dlOverlay').classList.add('active');
+    $('progressBar').style.width = '0%';
+    $('progressBar').style.background = 'linear-gradient(90deg, var(--accent), #FFA500)';
+    $('percentText').innerText = '0%';
+    $('speedText').innerText = '0 MB/s';
+    $('etaText').innerText = '--';
+    $('statusText').innerText = 'Connecting...';
+    $('loadTitle').innerText = 'PREPARING...';
+    $('loadSub').innerText = 'Fetching video data...';
+    
+    pollCount = 0;
+
+    try {
+        const res = await fetch('/api/start_download', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url, quality, title})
+        });
+        const data = await res.json();
+
+        if (data.task_id) {
+            if(pollingInterval) clearInterval(pollingInterval);
+            pollingInterval = setInterval(() => checkProgress(data.task_id), 500);
+        } else {
+            alert('Failed to start download.');
+            resetUI();
+        }
+    } catch (e) {
+        alert('Error connecting to server.');
+        resetUI();
+    }
+}
+
+async function checkProgress(taskId) {
+    try {
+        pollCount++;
+        
+        if (pollCount > 360) {
+            clearInterval(pollingInterval);
+            alert('Download taking too long! Server might be stuck. Please try again.');
+            resetUI();
+            return;
+        }
+
+        const res = await fetch(`/api/progress/${taskId}`);
+        const data = await res.json();
+
+        if (data.status === 'starting') {
+            $('statusText').innerText = 'Preparing...';
+        } 
+        else if (data.status === 'downloading') {
+            $('loadTitle').innerText = 'DOWNLOADING...';
+            $('loadSub').innerText = 'Downloading at max speed...';
+            $('statusText').innerText = 'Downloading...';
+            $('progressBar').style.width = `${data.progress}%`;
+            $('percentText').innerText = `${data.progress}%`;
+            $('speedText').innerText = `⚡ ${data.speed}`;
+            $('etaText').innerText = `⏳ ${data.eta}`;
+        } 
+        else if (data.status === 'merging') {
+            $('loadTitle').innerText = 'MERGING AUDIO...';
+            $('loadSub').innerText = 'Joining video and audio...';
+            $('statusText').innerText = 'Merging...';
+            $('progressBar').style.width = '100%';
+            $('percentText').innerText = '100%';
+            $('progressBar').style.background = '#10b981';
+            $('speedText').innerText = 'Processing...';
+            $('etaText').innerText = 'Wait';
+        } 
+        else if (data.status === 'ready') {
+            clearInterval(pollingInterval);
+            $('loadTitle').innerText = 'SUCCESS!';
+            $('loadSub').innerText = 'Your file is being saved.';
+            $('statusText').innerText = 'Saving...';
+            
+            window.location.href = `/api/get_file/${taskId}`;
+            setTimeout(resetUI, 3000);
+        } 
+        else if (data.status === 'error') {
+            clearInterval(pollingInterval);
+            let msg = data.error_msg ? `\n\nReason: ${data.error_msg}` : '\n\nTry selecting a different quality (e.g., 720p).';
+            alert('❌ Download Failed! Server could not process the video.' + msg);
+            resetUI();
+        }
+    } catch (e) {
+        console.log("Polling error", e);
+    }
+}
+
+function resetUI() {
+    $('dlOverlay').classList.remove('active');
+    document.querySelectorAll('.dl-btn').forEach(b => {
+        b.disabled = false;
+        const orig = b.getAttribute('data-original-html');
+        if(orig) b.innerHTML = orig;
+    });
+}
+
+function showError(msg) {
+    $('status').innerHTML = `<div class="err">❌ ${escapeHTML(msg)}</div>`;
+    $('result').innerHTML = '';
+}
+
+function escapeHTML(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function formatDuration(sec) {
+    const m = Math.floor(sec / 60), s = sec % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+$('urlInput').addEventListener('keypress', e => { if (e.key === 'Enter') fetchVideo(); });
+</script>
+</body>
+</html>

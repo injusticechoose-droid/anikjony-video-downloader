@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ 'Login' if mode=='login' else 'Sign Up' }} - AnikJony</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root { --bg: #ffffff; --surface: #f8f9fa; --text: #111111; --accent: #FFD700; --accent-hover: #FFC300; --border: #e0e0e0; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Fredoka', sans-serif; }
+body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background-image: radial-gradient(#000 1px, transparent 1px); background-size: 20px 20px; }
+.card { background: var(--surface); padding: 40px 30px; border-radius: 24px; width: 100%; max-width: 400px; border: 4px solid var(--text); box-shadow: 10px 10px 0px var(--text); animation: wobble 0.6s ease-out; position: relative; }
+h1 { font-size: 32px; margin-bottom: 5px; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+.sub { color: #666; font-size: 15px; margin-bottom: 25px; text-align: center; font-weight: 600; }
+input { width: 100%; padding: 15px; margin: 8px 0; background: #fff; border: 3px solid var(--text); border-radius: 12px; color: var(--text); font-size: 16px; font-weight: 600; transition: 0.2s; }
+input:focus { outline: none; box-shadow: 4px 4px 0px var(--accent); transform: translate(-2px, -2px); }
+button { width: 100%; padding: 16px; background: var(--accent); color: var(--text); border: 3px solid var(--text); border-radius: 12px; font-size: 18px; font-weight: 700; cursor: pointer; margin-top: 15px; transition: 0.2s; box-shadow: 5px 5px 0px var(--text); text-transform: uppercase; }
+button:hover { transform: translate(-3px, -3px); box-shadow: 8px 8px 0px var(--text); background: var(--accent-hover); }
+button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--text); }
+.msg { padding: 12px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; text-align: center; font-weight: 600; border: 3px solid var(--text); background: #fff; box-shadow: 3px 3px 0px var(--text); }
+.link { text-align: center; margin-top: 25px; font-size: 15px; color: #555; font-weight: 600; }
+.link a { color: var(--text); text-decoration: none; font-weight: 700; border-bottom: 3px solid var(--accent); padding-bottom: 2px; }
+@keyframes wobble { 0% { transform: scale(0.9) rotate(-3deg); opacity: 0; } 50% { transform: scale(1.05) rotate(2deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); } }
+</style>
+</head>
+<body>
+<div class="card">
+    <h1>AnikJony</h1>
+    <p class="sub">{{ 'Welcome Back!' if mode=='login' else 'Join the fun!' }}</p>
+    {% if error %}<div class="msg">{{ error }}</div>{% endif %}
+    <form method="POST">
+        <input name="username" placeholder="Username" required minlength="3" autocomplete="username">
+        <input name="password" type="password" placeholder="Password" required minlength="6">
+        <button type="submit">{{ 'Sign In' if mode=='login' else 'Sign Up' }}</button>
+    </form>
+    <div class="link">
+        {% if mode=='login' %}
+            New here? <a href="{{ url_for('signup') }}">Sign up</a>
+        {% else %}
+            Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
+        {% endif %}
+    </div>
+</div>
+</body>
+</html>
