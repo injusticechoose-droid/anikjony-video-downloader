@@ -3,13 +3,11 @@ import yt_dlp
 import time
 import threading
 import uuid
-import shutil
 from flask import Flask, request, jsonify, session, redirect, render_template, url_for, send_file
 from functools import wraps
 from database import init_db, add_user, check_user
 
 app = Flask(__name__)
-# Render এর জন্য SECRET_KEY এনভায়রনমেন্ট ভ্যারিয়েবল থেকে নেবে
 app.secret_key = os.environ.get("SECRET_KEY", "anikjony-super-secret-key-2024")
 COOKIE_FILE = "cookies.txt"
 init_db()
@@ -18,9 +16,13 @@ DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 download_tasks = {}
 
-# ffmpeg চেক
-if not shutil.which("ffmpeg"):
-    print("⚠️ WARNING: FFmpeg is not installed! Run: pkg install ffmpeg")
+# YouTube বাইপাসের নতুন ক্লায়েন্ট (android_vr কাজ করার সম্ভাবনা সবচেয়ে বেশি)
+YT_EXTRACTOR_ARGS = {
+    'youtube': {
+        'player_client': ['android_vr', 'mweb', 'web_creator'],
+        'skip': ['hls', 'dash']
+    }
+}
 
 def cleanup_old_files():
     now = time.time()
@@ -29,7 +31,6 @@ def cleanup_old_files():
         if os.path.isfile(fpath) and os.stat(fpath).st_mtime < now - 3600:
             try: os.remove(fpath)
             except: pass
-            
     for tid in list(download_tasks.keys()):
         if now - download_tasks[tid].get('created_at', now) > 3600:
             del download_tasks[tid]
@@ -83,14 +84,24 @@ def fetch():
     url = data.get('url', '').strip()
     if not url: return jsonify({'error': 'Please provide a valid URL'}), 400
 
-    opts = {'quiet': True, 'no_warnings': True, 'nocheckcertificate': True, 'skip_download': True, 'socket_timeout': 15}
-    if os.path.exists(COOKIE_FILE): opts['cookiefile'] = COOKIE_FILE
+    opts = {
+        'quiet': True, 'no_warnings': True, 'nocheckcertificate': True, 
+        'skip_download': True, 'socket_timeout': 20,
+        'extractor_args': YT_EXTRACTOR_ARGS,
+        'geo_bypass': True
+    }
+    if os.path.exists(COOKIE_FILE): 
+        opts['cookiefile'] = COOKIE_FILE
 
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
     except Exception as e:
-        return jsonify({'error': f'Failed to fetch: {str(e)[:100]}'}), 500
+        err_str = str(e)
+        # এরর মেসেজ ক্লিন করা
+        if 'Failed to extract' in err_str or 'Sign in' in err_str:
+            return jsonify({'error': 'YouTube blocked this server IP. Please try again later or use a different video.'}), 500
+        return jsonify({'error': f'Failed: {err_str[:100]}'}), 500
 
     formats, seen = [], set()
     for f in info.get('formats', []):
@@ -170,6 +181,8 @@ def download_worker(task_id, url, quality, title):
             'concurrent_fragment_downloads': 16,
             'progress_hooks': [progress_hook],
             'format_sort': ['ext:mp4:m4a', 'vcodec:h264', 'acodec:aac'],
+            'extractor_args': YT_EXTRACTOR_ARGS,
+            'geo_bypass': True
         }
         if os.path.exists(COOKIE_FILE): ydl_opts['cookiefile'] = COOKIE_FILE
 
@@ -189,10 +202,9 @@ def download_worker(task_id, url, quality, title):
                 download_tasks[task_id]['filepath'] = actual_filepath
                 download_tasks[task_id]['filename'] = os.path.basename(actual_filepath)
             else:
-                raise Exception("File not found after merge. FFmpeg error.")
+                raise Exception("File not found after merge.")
                 
     except Exception as e:
-        print(f"❌ Error: {e}")
         download_tasks[task_id]['status'] = 'error'
         err_msg = str(e).replace('[youtube]', '').replace('ERROR:', '').strip()
         download_tasks[task_id]['error_msg'] = err_msg[:100]
@@ -210,12 +222,8 @@ def start_download():
 
     task_id = str(uuid.uuid4())[:6]
     download_tasks[task_id] = {
-        'status': 'starting', 
-        'progress': 0, 
-        'speed': '0 MB/s', 
-        'eta': '',
-        'user_id': session['uid'],
-        'created_at': time.time()
+        'status': 'starting', 'progress': 0, 'speed': '0 MB/s', 'eta': '',
+        'user_id': session['uid'], 'created_at': time.time()
     }
     
     threading.Thread(target=download_worker, args=(task_id, url, quality, title)).start()
@@ -239,6 +247,5 @@ def get_file(task_id):
     return "File not ready", 404
 
 if __name__ == '__main__':
-    # Render এর জন্য PORT এনভায়রনমেন্ট ভ্যারিয়েবল থেকে নেবে
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, threaded=True)
