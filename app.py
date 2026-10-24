@@ -9,7 +9,7 @@ from database import init_db, add_user, check_user
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "anikjony-super-secret-key-2024")
-COOKIE_FILE = "cookies.txt"
+COOKIE_FILE = "/etc/secrets/cookies.txt" if os.path.exists("/etc/secrets/cookies.txt") else "cookies.txt"
 init_db()
 
 DOWNLOAD_DIR = "downloads"
